@@ -1,0 +1,6 @@
+perfplot==0.10.2
+kagglehub==1.0.0
+torchmetrics==1.9.0
+pandas==3.0.2
+xarray==2026.2.0
+scipy==1.17.1
