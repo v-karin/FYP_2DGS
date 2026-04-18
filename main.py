@@ -308,8 +308,8 @@ def main_topk_perfplot():
     )
 
     n_gaussians = 1000
-    squares = [32, 64, 128, 256]
-    blocks = [2, 4, 6, 8, 12, 16]
+    squares = [32, 64, 128, 256, 512]
+    blocks = [2, 4, 8, 16, 32]
     top_ks = [5, 10, 20, 40, "Naive", "Clamp"]
 
     loss_fn = nn.L1Loss()
