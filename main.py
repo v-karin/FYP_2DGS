@@ -224,6 +224,10 @@ def get_wrapper_tiles_perfplot(splatter, renderer, block_size):
     return WrapperTiledV1(splatter, renderer, (block_size, block_size))
 
 
+def compute_score(n_gaussians, img_size, block_size):
+    return n_gaussians * img_size / (block_size * block_size)
+
+
 def main_tiles_perfplot():
     key = list(dataset_profiles)[0]
     dataloader = load_data(key)
@@ -234,8 +238,10 @@ def main_tiles_perfplot():
     )
 
     ns_gaussians = [250, 500, 1000, 2000, 4000]
-    squares = [32, 64, 128, 256]
+    squares = [32, 64, 128, 256, 512, 768]
     blocks = [2, 4, 6, 8, 12, 16, 20, 24, 32]
+
+    max_bound = compute_score(1000, 256, 4)
 
     loss_fn = nn.L1Loss()
     times_global = {}
@@ -247,8 +253,11 @@ def main_tiles_perfplot():
             gt = cvt_img(dataloader.__getitem__(0), device)[:square, :square]
 
             for block_size in blocks:
+                if compute_score(n_gaussians, square, block_size) > max_bound:
+                    print(f"Skipped: {n_gaussians:4} Gaussians, {square:3}x{square:3}px, {block_size}x{block_size} blocks")
+                    continue
 
-                print(f"Iteration: {n_gaussians:4} Gaussians, {square:3}x{square:3}px, {block_size} blocks")
+                print(f"Iteration: {n_gaussians:4} Gaussians, {square:3}x{square:3}px, {block_size}x{block_size} blocks")
                 model = get_wrapper_tiles_perfplot(
                     SplatterCov(n_gaussians, 3, 0.2 / max(gt.shape[:2])),
                     RendererNaive(),
@@ -257,6 +266,7 @@ def main_tiles_perfplot():
 
                 times.loc[{"square": square, "block": block_size}] = get_mean_time(model, loss_fn, gt, 10)
                 del model
+
 
         pd.DataFrame(times).to_csv(f"{fig_root}_{n_gaussians}_gaussians_metrics.csv", sep=";")
         fig_multi(
