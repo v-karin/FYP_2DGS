@@ -155,6 +155,12 @@ def main_bench():
 
 
 
+def optimal_n_blocks(n_gaussians: int, img: Tensor, gaussians_sqrt_pixels_per_block: float):
+    img_sizes = torch.tensor(img.shape[:2], dtype=torch.float64)
+    n_blocks = img_sizes.sqrt().mul(n_gaussians).div(gaussians_sqrt_pixels_per_block)
+    return n_blocks.to(dtype=torch.int64, device=device).clamp(1)
+
+
 def main_example():
     for key in dataset_profiles:
         metric_funcs = {
@@ -170,9 +176,8 @@ def main_example():
         print(f"Image Dimensions: {img.shape}")
 
         n_gaussians = 16000
-        # dims = torch.tensor(img.shape[:2], dtype=torch.float64)
-        # n_blocks = ((dims / 128) * ((n_gaussians / 100) ** 0.5)).to(dtype=torch.int64, device=device).clamp(1) # aim to have ~100 gaussians per 128x128 tile,
-        # print("Blocks:", n_blocks)
+        n_blocks = optimal_n_blocks(n_gaussians, img, 3000)
+        print(f"Blocks: {n_blocks}")
 
         model = WrapperTiledV1(
             SplatterCov(n_gaussians, 3, 0.2 / max(img.shape[:2])),
