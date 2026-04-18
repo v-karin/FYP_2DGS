@@ -172,7 +172,7 @@ def main_example():
             metric_funcs[func] = metric_funcs[func].to(device=device)
 
         dataloader = load_data(key)
-        img = cvt_img(dataloader.__getitem__(0), device)[:128, :128]
+        img = cvt_img(dataloader.__getitem__(0), device)
         print(f"Image Dimensions: {img.shape}")
 
         n_gaussians = 16000
