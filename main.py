@@ -398,10 +398,10 @@ def main_torch_profile():
 
 def main():
     main_example()
-    #main_bench()
-    #main_tiles_perfplot()
-    #main_topk_perfplot()
-    #main_torch_profile()
+    main_bench()
+    main_tiles_perfplot()
+    main_topk_perfplot()
+    main_torch_profile()
 
 
 main()
