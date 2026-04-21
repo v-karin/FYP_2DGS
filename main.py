@@ -322,6 +322,8 @@ def main_tiles_perfplot():
 
 
 
+
+
 def get_renderer_topk_perfplot(k):
     if k == "Naive":
         return RendererNaive()
@@ -330,6 +332,8 @@ def get_renderer_topk_perfplot(k):
         return RendererClamp()
     
     return RendererTopK(k=k)
+
+
 
 
 def main_topk_perfplot():
@@ -378,6 +382,8 @@ def main_topk_perfplot():
             log=True,
             ylabel=perfplot_ylabel
         )
+
+
 
 
 
@@ -440,6 +446,8 @@ def main_torch_profile():
         True,
         100
     ).render("graph.gv", root, format="png", renderer="gd")
+
+
 
 
 
