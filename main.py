@@ -46,11 +46,11 @@ def sanit_join(root: str, *values: str):
 def fig_and_save_metrics(metrics, fig_root, metric_funcs):
     metrics.to_csv(f"{fig_root}_metrics.csv", sep=";")
 
-    fig_single(f"{fig_root}_time", metrics["time"].index, metrics["time"])
-    fig_single(f"{fig_root}_loss", metrics["loss"].index, metrics["loss"])
-    fig_single(f"{fig_root}_loss_per_time", metrics["time"], metrics["loss"])
+    fig_single(f"{fig_root}_time", metrics["time"].index, metrics["time"], title="Time per Epoch")
+    fig_single(f"{fig_root}_loss", metrics["loss"].index, metrics["loss"], title="Loss per Epoch")
+    fig_single(f"{fig_root}_loss_per_time", metrics["time"], metrics["loss"], title="Loss over Time")
     for key in metric_funcs.keys():
-        fig_single(f"{fig_root}_{key}_per_time", metrics["time"], metrics[key])
+        fig_single(f"{fig_root}_{key}_per_time", metrics["time"], metrics[key], title=f"{key} over Time")
 
 
 def prepare_metric_xy(metrics: xr.DataArray, x_dim: str, y_dim: str):
@@ -61,10 +61,11 @@ def prepare_metric_xy(metrics: xr.DataArray, x_dim: str, y_dim: str):
     )
 
 
-def fig_x_per_y(fig_root: str, metrics: xr.DataArray, x_dim: str, y_dim: str):
+def fig_x_per_y(fig_root: str, metrics: xr.DataArray, x_dim: str, y_dim: str, **kwargs):
     fig_multi(
         f"{fig_root}_{y_dim}_per_{x_dim}",
-        prepare_metric_xy(metrics, x_dim, y_dim)
+        prepare_metric_xy(metrics, x_dim, y_dim),
+        **kwargs
     )
 
 
@@ -95,9 +96,9 @@ def main_bench():
     splatters = [SplatterSigRot, SplatterCov]
     lrs = [0.025, 0.05, 0.1, 0.2]
     metric_funcs = {
-        "psnr": PeakSignalNoiseRatio(1.0),
-        "ms_ssim": PermuteBatchWrapper(MultiScaleStructuralSimilarityIndexMeasure(True, 5)),
-        "lpips": PermuteBatchWrapper(LearnedPerceptualImagePatchSimilarity()),
+        "PSNR": PeakSignalNoiseRatio(1.0),
+        "MS-SSIM": PermuteBatchWrapper(MultiScaleStructuralSimilarityIndexMeasure(True, 5)),
+        "LPIPS": PermuteBatchWrapper(LearnedPerceptualImagePatchSimilarity()),
     }
     for func in metric_funcs:
         metric_funcs[func] = metric_funcs[func].to(device=device)
@@ -139,16 +140,25 @@ def main_bench():
         fig_multi(
             f"{fig_root_global}_time",
             metrics_per_lr_arr.sel(metric="time"),
+            title="Time per Learning Rate"
         )
 
         fig_multi(
             f"{fig_root_global}_loss",
             metrics_per_lr_arr.sel(metric="loss"),
+            title="Loss per Learning Rate"
         )
 
-        fig_x_per_y(fig_root_global, metrics_per_lr_arr, "time", "loss")
+        fig_x_per_y(
+            fig_root_global, metrics_per_lr_arr, "time", "loss",
+            title="Loss over Time per Learning Rate"
+        )
+
         for key in metric_funcs.keys():
-            fig_x_per_y(fig_root_global, metrics_per_lr_arr, "time", key)
+            fig_x_per_y(
+                fig_root_global, metrics_per_lr_arr, "time", key,
+                title=f"{key} over Time per Learning Rate"
+            )
 
         metrics_per_lr_arr.to_netcdf(f"{fig_root_global}_metrics.h5")
 
@@ -164,9 +174,9 @@ def optimal_n_blocks(n_gaussians: int, img: Tensor, gaussians_sqrt_pixels_per_bl
 def main_example():
     for key in dataset_profiles:
         metric_funcs = {
-            "psnr": PeakSignalNoiseRatio(1.0),
-            "ms_ssim": PermuteBatchWrapper(MultiScaleStructuralSimilarityIndexMeasure(True, 5)),
-            "lpips": PermuteBatchWrapper(LearnedPerceptualImagePatchSimilarity()),
+            "PSNR": PeakSignalNoiseRatio(1.0),
+            "MS-SSIM": PermuteBatchWrapper(MultiScaleStructuralSimilarityIndexMeasure(True, 5)),
+            "LPIPS": PermuteBatchWrapper(LearnedPerceptualImagePatchSimilarity()),
         }
         for func in metric_funcs:
             metric_funcs[func] = metric_funcs[func].to(device=device)
@@ -338,6 +348,7 @@ def main_topk_perfplot():
         fig_multi(
             f"{fig_root}_{square}",
             ([blocks for key in top_ks], times),
+            title=f"Average Time Taken per Epoch\nover Renderer Type (Top-K vs others)\nfor ${square} \\times {square}$px Images",
             log=True
         )
 

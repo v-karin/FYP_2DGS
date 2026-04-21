@@ -1,14 +1,17 @@
 from matplotlib import pyplot as plt
+import scienceplots # Keep this if using "science" style
 import xarray as xr
 
 
+plt.style.use("science")
 
 
-def init_fig(title, log=False):
+
+
+def init_fig(log=False):
     fig = plt.figure()
     ax = fig.add_axes([0.1, 0.1, 0.9, 0.9])
 
-    if len(title) > 0: ax.set_title(title)
     if log: ax.set_yscale("log")
     ax.grid(which="major", color="0.8")
     ax.grid(which="minor", color="0.9")
@@ -16,15 +19,28 @@ def init_fig(title, log=False):
     return fig, ax
 
 
-def fig_single(path, x, y, title="", dpi=300, log=False):
-    fig, ax = init_fig(title, log)
-    ax.plot(x, y)
+def finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel):
+    if title is not None:
+        ax.set_title(title)
+
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+
     fig.savefig(f"{path}.png", dpi=dpi, bbox_inches="tight")
     plt.close(fig)
 
 
-def fig_multi(path, xy, title="", dpi=300, log=False):
-    fig, ax = init_fig(title, log)
+def fig_single(path, x, y, title=None, dpi=300, log=False, xlabel=None, ylabel=None):
+    fig, ax = init_fig(log)
+    ax.plot(x, y)
+    finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel)
+
+
+def fig_multi(path, xy, title=None, dpi=300, log=False, xlabel=None, ylabel=None):
+    fig, ax = init_fig(log)
 
     if isinstance(xy, tuple):
         xs, ys = xy[0], xy[1]
@@ -44,5 +60,4 @@ def fig_multi(path, xy, title="", dpi=300, log=False):
     else:
         raise ValueError(ys)
 
-    fig.savefig(f"{path}.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
+    finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel)
