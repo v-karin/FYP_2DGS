@@ -46,11 +46,11 @@ def sanit_join(root: str, *values: str):
 def fig_and_save_metrics(metrics, fig_root, metric_funcs):
     metrics.to_csv(f"{fig_root}_metrics.csv", sep=";")
 
-    fig_single(f"{fig_root}_time", metrics["time"].index, metrics["time"], title="Time per Epoch")
-    fig_single(f"{fig_root}_loss", metrics["loss"].index, metrics["loss"], title="Loss per Epoch")
-    fig_single(f"{fig_root}_loss_per_time", metrics["time"], metrics["loss"], title="Loss over Time")
+    fig_single(f"{fig_root}_time", metrics["time"].index, metrics["time"], title="Time per Epoch", xlabel="Epoch")
+    fig_single(f"{fig_root}_loss", metrics["loss"].index, metrics["loss"], title="Loss per Epoch", xlabel="Epoch")
+    fig_single(f"{fig_root}_loss_per_time", metrics["time"], metrics["loss"], title="Loss over Time", xlabel="Time")
     for key in metric_funcs.keys():
-        fig_single(f"{fig_root}_{key}_per_time", metrics["time"], metrics[key], title=f"{key} over Time")
+        fig_single(f"{fig_root}_{key}_per_time", metrics["time"], metrics[key], title=f"{key} over Time", xlabel="Time")
 
 
 def prepare_metric_xy(metrics: xr.DataArray, x_dim: str, y_dim: str):
@@ -140,24 +140,28 @@ def main_bench():
         fig_multi(
             f"{fig_root_global}_time",
             metrics_per_lr_arr.sel(metric="time"),
-            title="Time per Learning Rate"
+            title="Time per Learning Rate",
+            xlabel="Epoch"
         )
 
         fig_multi(
             f"{fig_root_global}_loss",
             metrics_per_lr_arr.sel(metric="loss"),
-            title="Loss per Learning Rate"
+            title="Loss per Learning Rate",
+            xlabel="Epoch"
         )
 
         fig_x_per_y(
             fig_root_global, metrics_per_lr_arr, "time", "loss",
-            title="Loss over Time per Learning Rate"
+            title="Loss over Time\nper Learning Rate",
+            xlabel="Time"
         )
 
         for key in metric_funcs.keys():
             fig_x_per_y(
                 fig_root_global, metrics_per_lr_arr, "time", key,
-                title=f"{key} over Time per Learning Rate"
+                title=f"{key} over Time\nper Learning Rate",
+                xlabel="Time"
             )
 
         metrics_per_lr_arr.to_netcdf(f"{fig_root_global}_metrics.h5")
