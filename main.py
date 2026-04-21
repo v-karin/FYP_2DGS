@@ -169,9 +169,11 @@ def main_bench():
 
 
 
-def optimal_n_blocks(n_gaussians: int, img: Tensor, gaussians_sqrt_pixels_per_block: float):
+
+
+def optimal_n_blocks(n_gaussians: int, img: Tensor, gaussians_pixels_per_block_sq: float):
     img_sizes = torch.tensor(img.shape[:2], dtype=torch.float64)
-    n_blocks = img_sizes.sqrt().mul(n_gaussians).div(gaussians_sqrt_pixels_per_block)
+    n_blocks = img_sizes.mul(n_gaussians).sqrt().div(gaussians_pixels_per_block_sq)
     return n_blocks.to(dtype=torch.int64, device=device).clamp(1)
 
 
@@ -199,7 +201,7 @@ def main_example():
             n_blocks,
         ).to(device=device)
 
-        root = sanit_join(RESULTS_PATH, "splat", model, key)
+        root = sanit_join(RESULTS_PATH, "splat", "x".join(img.shape[:2]), model, key)
         img_root = root_folder(osp.join(root, "images"), "img")
         save_img(f"{img_root}_gt", img)
 
@@ -208,6 +210,7 @@ def main_example():
         model.splatter.save_params(root, "params_final")
 
         fig_and_save_metrics(metrics, root_folder(root, "fig"), metric_funcs)
+
 
 
 
