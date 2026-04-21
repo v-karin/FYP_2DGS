@@ -8,8 +8,8 @@ plt.style.use("science")
 
 
 
-def init_fig(log=False):
-    fig = plt.figure()
+def init_fig(figsize, log=False):
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_axes([0.1, 0.1, 0.9, 0.9])
 
     if log: ax.set_yscale("log")
@@ -33,14 +33,14 @@ def finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel):
     plt.close(fig)
 
 
-def fig_single(path, x, y, title=None, dpi=300, log=False, xlabel=None, ylabel=None):
-    fig, ax = init_fig(log)
+def fig_single(path, x, y, title=None, dpi=300, log=False, xlabel=None, ylabel=None, figsize=(5.906, 4.176)):
+    fig, ax = init_fig(figsize, log)
     ax.plot(x, y)
     finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel)
 
 
-def fig_multi(path, xy, title=None, dpi=300, log=False, xlabel=None, ylabel=None):
-    fig, ax = init_fig(log)
+def fig_multi(path, xy, title=None, dpi=300, log=False, xlabel=None, ylabel=None, figsize=(5.906, 4.176)):
+    fig, ax = init_fig(figsize, log)
 
     if isinstance(xy, tuple):
         xs, ys = xy[0], xy[1]
