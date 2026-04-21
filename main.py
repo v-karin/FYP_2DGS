@@ -242,6 +242,7 @@ def get_wrapper_tiles_perfplot(splatter, renderer, block_size):
 
 
 def compute_score(n_gaussians, img_size, block_size):
+    block_size = 1 if block_size == "Naive" else block_size
     return n_gaussians * img_size / (block_size * block_size)
 
 
@@ -342,7 +343,7 @@ def main_topk_perfplot():
 
     n_gaussians = 1000
     squares = [32, 64, 128, 256, 512]
-    blocks = [2, 4, 8, 16, 32]
+    blocks = ["Naive", 1, 2, 4, 8, 16, 32]
     top_ks = [5, 10, 20, 40, "Naive", "Clamp"]
 
     max_bound = compute_score(n_gaussians, 512, 2) 
@@ -359,15 +360,14 @@ def main_topk_perfplot():
                     continue
 
                 print(f"Iteration: {square:3}x{square:3}px, {block_size}x{block_size} blocks, {k}-K renderer")
-                block = (block_size, block_size)
 
-                model = WrapperTiledV1(
+                model = get_wrapper_tiles_perfplot(
                     SplatterCov(n_gaussians, 3, 0.2 / max(gt.shape[:2])),
                     get_renderer_topk_perfplot(k),
-                    block
+                    block_size
                 ).to(device=device)
 
-                times.loc[{topk_label: str(k), block_label: block_size}] = get_mean_time(model, loss_fn, gt, 10)
+                times.loc[{topk_label: str(k), block_label: str(block_size)}] = get_mean_time(model, loss_fn, gt, 10)
                 del model
 
         times.to_pandas().to_csv(f"{fig_root}_{square}_metrics.csv", sep=";")
