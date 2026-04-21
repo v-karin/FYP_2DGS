@@ -282,6 +282,7 @@ def main_tiles_perfplot():
         fig_multi(
             f"{fig_root}_{n_gaussians}_gaussians",
             times,
+            title=f"Average Time Taken per Epoch\nover Image square size (px)\nfor {n_gaussians} Gaussians",
             log=True
         )
 
@@ -292,6 +293,7 @@ def main_tiles_perfplot():
     fig_multi(
         f"{fig_root}_all",
         times_global_flat,
+        title=f"Average Time Taken per Epoch\nover Image square size (px)\nfor All Gaussians",
         log=True
     )
 
