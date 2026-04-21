@@ -21,6 +21,8 @@ https://github.com/garrettj403/SciencePlots/wiki/FAQ
 
 #### 2. Install Python Dependencies
 
+In this repository, torch 2.11.0 and torchvision 0.25.0 were used.
+
 ```bash
 pip install torch==2.11.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cu126
 pip install -r requirements.txt

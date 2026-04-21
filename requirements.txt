@@ -4,3 +4,4 @@ pandas==3.0.2
 xarray==2026.2.0
 scipy==1.17.1
 SciencePlots==2.2.1
+torchviz==0.0.3
