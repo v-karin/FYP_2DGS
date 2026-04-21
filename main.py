@@ -242,6 +242,19 @@ def compute_score(n_gaussians, img_size, block_size):
     return n_gaussians * img_size / (block_size * block_size)
 
 
+
+
+
+
+time_label = "Average Time Taken per Epoch"
+block_label = "Block Count per Side"
+square_label = "Image Size per Side"
+topk_label = "Renderer Type (Top-K vs others)"
+perfplot_ylabel = "Time in Seconds"
+
+
+
+
 def main_tiles_perfplot():
     key = list(dataset_profiles)[1]
     dataloader = load_data(key)
@@ -260,7 +273,7 @@ def main_tiles_perfplot():
     times_global = {}
 
     for n_gaussians in ns_gaussians:
-        times = xr.DataArray(coords=[squares, blocks], dims=["square", "block"])
+        times = xr.DataArray(coords=[squares, blocks], dims=[square_label, block_label])
 
         for square in squares:
             gt = cvt_img(dataloader.__getitem__(0), device)[:square, :square]
@@ -277,27 +290,29 @@ def main_tiles_perfplot():
                     block_size
                 ).to(device=device)
 
-                times.loc[{"square": square, "block": block_size}] = get_mean_time(model, loss_fn, gt, 10)
+                times.loc[{square_label: square, block_label: block_size}] = get_mean_time(model, loss_fn, gt, 10)
                 del model
 
 
-        pd.DataFrame(times).to_csv(f"{fig_root}_{n_gaussians}_gaussians_metrics.csv", sep=";")
+        times.to_pandas().to_csv(f"{fig_root}_{n_gaussians}_gaussians_metrics.csv", sep=";")
         fig_multi(
             f"{fig_root}_{n_gaussians}_gaussians",
             times,
-            title=f"Average Time Taken per Epoch\nover Image square size (px)\nfor {n_gaussians} Gaussians",
-            log=True
+            title=f"{time_label}\nper {block_label}\nover {square_label} (px)\nfor {n_gaussians} Gaussians",
+            log=True,
+            ylabel=perfplot_ylabel
         )
 
         times_global[n_gaussians] = times
 
-    times_global_flat = flat_from_dict(times_global, "square", "gs_sq", ("gs", "px2")).T
-    pd.DataFrame(times_global_flat).to_csv(f"{fig_root}_all_metrics.csv", sep=";")
+    times_global_flat = flat_from_dict(times_global, square_label, f"Gaussians / {square_label}", ("gs", "px2")).T
+    times_global_flat.to_pandas().to_csv(f"{fig_root}_all_metrics.csv", sep=";")
     fig_multi(
         f"{fig_root}_all",
         times_global_flat,
-        title=f"Average Time Taken per Epoch\nover Image square size (px)\nfor All Gaussians",
-        log=True
+        title=f"{time_label}\nper {block_label}\nover {square_label} (px)\nfor All Gaussians",
+        log=True,
+        ylabel=perfplot_ylabel
     )
 
 
@@ -332,11 +347,9 @@ def main_topk_perfplot():
 
     for square in squares:
         gt = cvt_img(dataloader.__getitem__(0), device)[:square, :square]
-        times = {}
+        times = xr.DataArray(coords=[top_ks, blocks], dims=[topk_label, block_label])
 
         for k in top_ks:
-            times[k] = []
-
             for block_size in blocks:
                 if compute_score(n_gaussians, square, block_size) > max_bound:
                     print(f"Skipped: {square:3}x{square:3}px, {block_size}x{block_size} blocks, {k}-K renderer")
@@ -351,15 +364,16 @@ def main_topk_perfplot():
                     block
                 ).to(device=device)
 
-                times[k].append(get_mean_time(model, loss_fn, gt, 10))
+                times.loc[{topk_label: str(k), block_label: block_size}] = get_mean_time(model, loss_fn, gt, 10)
                 del model
 
-        pd.DataFrame(times).to_csv(f"{fig_root}_{square}_metrics.csv", sep=";")
+        times.to_pandas().to_csv(f"{fig_root}_{square}_metrics.csv", sep=";")
         fig_multi(
             f"{fig_root}_{square}",
-            ([blocks for key in top_ks], times),
+            times,
             title=f"Average Time Taken per Epoch\nover Renderer Type (Top-K vs others)\nfor ${square} \\times {square}$px Images",
-            log=True
+            log=True,
+            ylabel=perfplot_ylabel
         )
 
 
