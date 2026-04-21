@@ -196,7 +196,7 @@ def main_example():
         model = WrapperTiledV1(
             SplatterCov(n_gaussians, 3, 0.2 / max(img.shape[:2])),
             RendererNaive(), #RendererTopK(k=10),
-            (16, 16),
+            n_blocks,
         ).to(device=device)
 
         root = sanit_join(RESULTS_PATH, "splat", model, key)
