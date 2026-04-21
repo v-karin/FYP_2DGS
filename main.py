@@ -268,8 +268,8 @@ def main_tiles_perfplot():
         "fig"
     )
 
-    ns_gaussians = [250, 500, 1000, 2000, 4000]
-    squares = [32, 64, 128, 256, 512, 768]
+    ns_gaussians = [250, 500, 1000, 2000, 4000, 8000, 16000]
+    squares = [32, 64, 128, 256, 512]
     blocks = [2, 4, 6, 8, 12, 16, 20, 24, 32]
 
     max_bound = compute_score(4000, 512, 8)
