@@ -239,7 +239,7 @@ def compute_score(n_gaussians, img_size, block_size):
 
 
 def main_tiles_perfplot():
-    key = list(dataset_profiles)[0]
+    key = list(dataset_profiles)[1]
     dataloader = load_data(key)
 
     fig_root = root_folder(
@@ -310,7 +310,7 @@ def get_renderer_topk_perfplot(k):
 
 
 def main_topk_perfplot():
-    key = list(dataset_profiles)[0]
+    key = list(dataset_profiles)[1]
     dataloader = load_data(key)
 
     fig_root = root_folder(
