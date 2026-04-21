@@ -251,8 +251,7 @@ def main_tiles_perfplot():
     squares = [32, 64, 128, 256, 512, 768]
     blocks = [2, 4, 6, 8, 12, 16, 20, 24, 32]
 
-    max_bound = compute_score(1000, 256, 4)
-
+    max_bound = compute_score(4000, 512, 8)
     loss_fn = nn.L1Loss()
     times_global = {}
 
@@ -324,6 +323,7 @@ def main_topk_perfplot():
     blocks = [2, 4, 8, 16, 32]
     top_ks = [5, 10, 20, 40, "Naive", "Clamp"]
 
+    max_bound = compute_score(n_gaussians, 512, 2) 
     loss_fn = nn.L1Loss()
 
     for square in squares:
@@ -334,9 +334,13 @@ def main_topk_perfplot():
             times[k] = []
 
             for block_size in blocks:
+                if compute_score(n_gaussians, square, block_size) > max_bound:
+                    print(f"Skipped: {square:3}x{square:3}px, {block_size}x{block_size} blocks, {k}-K renderer")
+                    continue
+
+                print(f"Iteration: {square:3}x{square:3}px, {block_size}x{block_size} blocks, {k}-K renderer")
                 block = (block_size, block_size)
 
-                print("\nIteration:", square, k, block_size)
                 model = WrapperTiledV1(
                     SplatterCov(n_gaussians, 3, 0.2 / max(gt.shape[:2])),
                     get_renderer_topk_perfplot(k),
