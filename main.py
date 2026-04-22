@@ -10,7 +10,7 @@ import torchviz
 import xarray as xr
 
 from utils_fig import fig_multi, fig_and_save_metrics, fig_x_per_y
-from utils_metrics import array_from_dict, flatten_xarray, PermuteBatchWrapper
+from utils_metrics import array_from_dict, flatten_xarray, save_2d_xr, PermuteBatchWrapper
 from utils_train import train_loop, get_mean_time
 
 from data_prep.downloader import load_data, dataset_profiles
@@ -25,6 +25,14 @@ RESULTS_PATH = osp.join(ROOT_OUT_PATH, "results")
 
 device = "cpu"
 #device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+
+def measure_and_clear():
+    peak_alloc = torch.cuda.max_memory_allocated() / (1024 ** 2)
+    print(f"Peak Allocated (MB): {peak_alloc}")
+    torch.cuda.empty_cache()
+    torch.cuda.reset_peak_memory_stats()
+    return peak_alloc
 
 
 
@@ -89,12 +97,20 @@ def main_bench():
     for func in metric_funcs:
         metric_funcs[func] = metric_funcs[func].to(device=device)
 
+
     for block_size in block_sizes:
+        blocksize_root = sanit_join(RESULTS_PATH, "bench", f"bs_{block_size}")
+        if device == "cuda:0":
+            memory_usage = xr.DataArray(
+                coords=[ks, [f"{splatter}" for splatter in splatters]],
+                dims=["Ks", "Splatter"]
+            )
+
         for k in ks:
             for splatter in splatters:
 
                 metrics_per_lr = {}
-                root = sanit_join(RESULTS_PATH, "bench", f"bs_{block_size}", f"k_{k}", splatter)
+                root = sanit_join(blocksize_root, f"k_{k}", splatter)
 
                 for lr in lrs:
                     model = get_wrapper_tiles(
@@ -105,7 +121,6 @@ def main_bench():
 
                     local_root = sanit_join(root, lr, device)
                     local_img_root = root_folder(osp.join(local_root, "images"), "img")
-
                     save_img(f"{local_img_root}_gt", img)
 
                     metrics = train_loop(
@@ -114,13 +129,16 @@ def main_bench():
                         metric_funcs=metric_funcs,
                     )
                     model.splatter.save_params(local_root, "params_final")
-                    del model
 
+                    if device == "cuda:0":
+                        memory_usage.loc[{"Ks": f"{k}", "Splatter": f"{splatter}"}] = measure_and_clear()
+
+                    del model
                     fig_and_save_metrics(metrics, root_folder(local_root, "fig"), metric_funcs)
                     metrics_per_lr[lr] = xr.DataArray(metrics, dims=["epoch", "metric"])
 
 
-                metrics_per_lr_arr = xr.Dataset(metrics_per_lr).to_dataarray("lr")
+                metrics_per_lr_arr = array_from_dict(metrics_per_lr, "lr")
                 fig_root_global = root_folder(
                     sanit_join(root, "lr_all", device),
                     "fig"
@@ -154,6 +172,11 @@ def main_bench():
                     )
 
                 metrics_per_lr_arr.to_netcdf(f"{fig_root_global}_metrics.h5")
+                save_2d_xr(flatten_xarray(metrics_per_lr_arr, "metric", "lr", "metric_lr"), f"{fig_root_global}_metrics.csv")
+
+
+        if device == "cuda:0":
+            save_2d_xr(memory_usage, f"{blocksize_root}_memory_usage.csv")
 
 
 
@@ -193,6 +216,12 @@ def main_example():
         model.splatter.save_params(root, "params_final")
 
         fig_and_save_metrics(metrics, root_folder(root, "fig"), metric_funcs)
+
+        if device == "cuda:0":
+            with open(osp.join(root, "memory.txt"), "w") as file:
+                file.write(f"Model:\n\n{model}\n\nMemory (MB): {measure_and_clear()}\n")
+
+        del model
 
 
 
@@ -246,7 +275,7 @@ def main_tiles_perfplot():
                 del model
 
 
-        times.to_pandas().to_csv(f"{gs_root}_{n_gaussians}_gaussians_metrics.csv", sep=";")
+        save_2d_xr(times, f"{gs_root}_{n_gaussians}_gaussians_metrics.csv")
         fig_multi(
             f"{gs_root}_{n_gaussians}_gaussians",
             times,
@@ -261,7 +290,7 @@ def main_tiles_perfplot():
     times_global = array_from_dict(times_global_dict, gs_label)
     times_global_flat = flatten_xarray(times_global, gs_label, square_label, f"{gs_label}/{square_label}", ("gs", "px")).T
 
-    times_global_flat.to_pandas().to_csv(f"{fig_root}_all_metrics.csv", sep=";")
+    save_2d_xr(times_global_flat, f"{fig_root}_all_metrics.csv")
     fig_multi(
         f"{fig_root}_all",
         times_global_flat,
@@ -323,7 +352,7 @@ def main_topk_perfplot():
                 times.loc[{topk_label: str(k), block_label: str(block_size)}] = get_mean_time(model, loss_fn, gt, 10)
                 del model
 
-        times.to_pandas().to_csv(f"{fig_root}_{square}_metrics.csv", sep=";")
+        save_2d_xr(times, f"{fig_root}_{square}_metrics.csv")
         fig_multi(
             f"{fig_root}_{square}",
             times,
@@ -376,7 +405,7 @@ def main_torch_profile():
 
 
     print("\nWriting profiler logs")
-    root = osp.join(RESULTS_PATH, "profile", key)
+    root = sanit_join(RESULTS_PATH, "profile", key, device)
     prof.export_chrome_trace(root_folder(root, "trace.json"))
     prof.export_stacks(osp.join(root, "stacks.txt"))
 
