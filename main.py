@@ -78,6 +78,9 @@ def main_bench():
 
     splatters = [SplatterSigRot, SplatterCov]
     lrs = [0.025, 0.05, 0.1, 0.2]
+    block_sizes = ["Naive", 6]
+    ks = ["Naive", 10]
+
     metric_funcs = {
         "PSNR": PeakSignalNoiseRatio(1.0),
         "MS-SSIM": PermuteBatchWrapper(MultiScaleStructuralSimilarityIndexMeasure(True, 5)),
@@ -86,10 +89,10 @@ def main_bench():
     for func in metric_funcs:
         metric_funcs[func] = metric_funcs[func].to(device=device)
 
-    for block_size in ["Naive", 6]:
-        for k in ["Naive", 10]:
-
+    for block_size in block_sizes:
+        for k in ks:
             for splatter in splatters:
+
                 metrics_per_lr = {}
                 root = sanit_join(RESULTS_PATH, "bench", f"bs_{block_size}", f"k_{k}", splatter)
 
