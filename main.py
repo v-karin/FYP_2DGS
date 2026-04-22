@@ -197,7 +197,7 @@ def main_example():
         img = cvt_img(dataloader.__getitem__(0), device)
         print(f"Image Dimensions: {img.shape}")
 
-        gaussians_per_pixel = 0.3 # ~4000 per 128x128 px
+        gaussians_per_pixel = 0.1 # ~1600 per 128x128 px
         n_gaussians, n_blocks = from_density(gaussians_per_pixel, img, 11, device=device) # 4000gs * 128 -> 16 blocks per side
         print(f"Blocks: {n_blocks}")
 
@@ -212,7 +212,7 @@ def main_example():
         save_img(f"{img_root}_gt", img)
 
         print(f"\n\n\nTraining Single image: {key}_0")
-        metrics = train_loop(model, img_root, img, 1000, 0.1, save_intervals=10, metric_funcs=metric_funcs)
+        metrics = train_loop(model, img_root, img, 200, 0.025, save_intervals=10, metric_funcs=metric_funcs)
         model.splatter.save_params(root, "params_final")
 
         fig_and_save_metrics(metrics, root_folder(root, "fig"), metric_funcs)
