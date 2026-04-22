@@ -224,14 +224,14 @@ def main_example():
 
 
 
-def flat_from_dict(d: dict, dim_x, dim_new, idx_suffix=("", "")):
-    return flatten_xarray(xr.Dataset(d).to_array(dim="intermediate"), "intermediate", dim_x, dim_new, idx_suffix)
+def array_from_dict(d: dict, dim_new):
+    return xr.Dataset(d).to_array(dim=dim_new)
 
 
 def flatten_xarray(arr: xr.DataArray, dim0, dim1, dim_new, idx_suffix=("", "")):
     arr_flat = arr.stack(**{dim_new: (dim0, dim1)})
     idx_flat = [f"{idx[0]}{idx_suffix[0]}_{idx[1]}{idx_suffix[1]}" for idx in arr_flat.indexes[dim_new]]
-    return arr_flat.assign_coords(**{dim_new: idx_flat})
+    return arr_flat.drop_vars([dim_new, dim0, dim1]).assign_coords(**{dim_new: idx_flat})
 
 
 def get_mean_time(model, loss_fn, gt, iters: int):
@@ -262,6 +262,7 @@ time_label = "Average Time Taken per Epoch"
 block_label = "Block Count per Side"
 square_label = "Image Size per Side"
 topk_label = "Renderer Type (Top-K vs others)"
+gs_label = "Gaussians"
 perfplot_ylabel = "Time in Seconds"
 
 
@@ -271,10 +272,8 @@ def main_tiles_perfplot():
     key = list(dataset_profiles)[1]
     dataloader = load_data(key)
 
-    fig_root = root_folder(
-        sanit_join(RESULTS_PATH, "tiles_perfplot", device),
-        "fig"
-    )
+    root = sanit_join(RESULTS_PATH, "tiles_perfplot", device)
+    gs_root = root_folder(sanit_join(root, "gaussians"), "fig")
 
     ns_gaussians = [250, 500, 1000, 2000, 4000, 8000, 16000]
     squares = [32, 64, 128, 256, 512]
@@ -282,7 +281,7 @@ def main_tiles_perfplot():
 
     max_bound = compute_score(4000, 512, 8)
     loss_fn = nn.L1Loss()
-    times_global = {}
+    times_global_dict = {}
 
     for n_gaussians in ns_gaussians:
         times = xr.DataArray(coords=[squares, blocks], dims=[square_label, block_label])
@@ -306,18 +305,21 @@ def main_tiles_perfplot():
                 del model
 
 
-        times.to_pandas().to_csv(f"{fig_root}_{n_gaussians}_gaussians_metrics.csv", sep=";")
+        times.to_pandas().to_csv(f"{gs_root}_{n_gaussians}_gaussians_metrics.csv", sep=";")
         fig_multi(
-            f"{fig_root}_{n_gaussians}_gaussians",
+            f"{gs_root}_{n_gaussians}_gaussians",
             times,
             title=f"{time_label}\nper {block_label}\nover {square_label} (px)\nfor {n_gaussians} Gaussians",
             log=True,
             ylabel=perfplot_ylabel
         )
 
-        times_global[n_gaussians] = times
+        times_global_dict[n_gaussians] = times
 
-    times_global_flat = flat_from_dict(times_global, square_label, f"Gaussians / {square_label}", ("gs", "px2")).T
+    fig_root = root_folder(root, "fig")
+    times_global = array_from_dict(times_global_dict, gs_label)
+    times_global_flat = flatten_xarray(times_global, gs_label, square_label, f"{gs_label}/{square_label}", ("gs", "px")).T
+
     times_global_flat.to_pandas().to_csv(f"{fig_root}_all_metrics.csv", sep=";")
     fig_multi(
         f"{fig_root}_all",
@@ -326,6 +328,16 @@ def main_tiles_perfplot():
         log=True,
         ylabel=perfplot_ylabel
     )
+
+    squares_root = root_folder(sanit_join(root, "squares"), "fig")
+    for square, times in times_global.groupby(square_label):
+        fig_multi(
+            f"{squares_root}_{square}px",
+            times.squeeze(square_label),
+            title=f"{time_label}\nper {block_label}\nover {gs_label} (px)\nfor ${square} \\times {square}$px Images",
+            log=True,
+            ylabel=perfplot_ylabel
+        )
 
 
 
