@@ -205,7 +205,7 @@ def main_bpp():
 
     list_gpp = [0.01, 0.02, 0.05, 0.1, 0.2]
 
-    bpp_metrics = xr.DataArray(coords=[list_gpp], dims=[gpp_label])
+    bpp_metrics = xr.DataArray(coords=[list_gpp, ["BPP", "PSNR", "MS-SSIM", "LPIPS", time_axis_label]], dims=[gpp_label, "Metric"])
     metrics_per_gpp = {}
     root = sanit_join(RESULTS_PATH, "bpp")
 
@@ -227,7 +227,41 @@ def main_bpp():
 
         fig_and_save_metrics(metrics, root_folder(gpp_root, "fig"), metric_funcs)
         metrics_per_gpp[gaussians_per_pixel] = xr.DataArray(metrics, dims=["Epoch", "Metric"])
-        bpp_metrics.loc[{gpp_label: gaussians_per_pixel}] = osp.getsize(params_filepath)
+
+        bpp_metrics.loc[{gpp_label: gaussians_per_pixel, "Metric": "BPP"}] = osp.getsize(params_filepath) / (img.shape[0] * img.shape[1])
+        bpp_metrics.loc[{gpp_label: gaussians_per_pixel, "Metric": time_axis_label}] = metrics["time"].iloc[-1]
+        for func in metric_funcs:
+            bpp_metrics.loc[{gpp_label: gaussians_per_pixel, "Metric": func}] = metrics[func].iloc[-1]
+
+    save_2d_xr(bpp_metrics, osp.join(root, "bits_per_pixel.csv"))
+    print("Saved")
+
+    fig_root = osp.join(root, "fig")
+
+    fig_single(
+        f"{fig_root}_time",
+        bpp_metrics.sel(Metric="BPP"),
+        bpp_metrics.sel(Metric=time_axis_label),
+        title=f"{time_axis_label}\nover Bits per Pixel",
+        xlabel="Bits per Pixel"
+    )
+
+    fig_single(
+        f"{fig_root}_gpp",
+        bpp_metrics.sel(Metric="BPP"),
+        list_gpp,
+        title=f"{gpp_label}\nover Bits per Pixel",
+        xlabel="Bits per Pixel"
+    )
+
+    for func in metric_funcs:
+        fig_single(
+            f"{fig_root}_{func}",
+            bpp_metrics.sel(Metric="BPP"),
+            bpp_metrics.sel(Metric=func),
+            title=f"{func}\nover Bits per Pixel",
+            xlabel="Bits per Pixel"
+        )
 
 
 
