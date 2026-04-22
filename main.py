@@ -209,7 +209,7 @@ def main_example():
             n_blocks,
         ).to(device=device)
 
-        root = sanit_join(RESULTS_PATH, "splat", "x".join(img.shape[:2]), model, key)
+        root = sanit_join(RESULTS_PATH, "splat", f"{img.shape[0]}x{img.shape[1]}", model, key)
         img_root = root_folder(osp.join(root, "images"), "img")
         save_img(f"{img_root}_gt", img)
 
