@@ -78,6 +78,9 @@ def get_wrapper_tiles(splatter, renderer, block_size):
 
 
 
+time_axis_label = "Time (Seconds)"
+
+
 def main_bench():
     key = "kodak"
     dataloader = load_data(key)
@@ -162,14 +165,14 @@ def main_bench():
                 fig_x_per_y(
                     fig_root_global, metrics_per_lr_arr, "time", "loss",
                     title="Loss over Time\nper Learning Rate",
-                    xlabel="Time"
+                    xlabel=time_axis_label
                 )
 
                 for key in metric_funcs.keys():
                     fig_x_per_y(
                         fig_root_global, metrics_per_lr_arr, "time", key,
                         title=f"{key} over Time\nper Learning Rate",
-                        xlabel="Time"
+                        xlabel=time_axis_label
                     )
 
                 metrics_per_lr_arr.to_netcdf(f"{fig_root_global}_metrics.h5")

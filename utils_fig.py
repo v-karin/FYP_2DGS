@@ -65,14 +65,17 @@ def fig_multi(path, xy, title=None, dpi=300, log=False, xlabel=None, ylabel=None
     finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel)
 
 
+time_axis_label = "Time (Seconds)"
+
+
 def fig_and_save_metrics(metrics, fig_root, metric_funcs):
     metrics.to_csv(f"{fig_root}_metrics.csv", sep=";")
 
     fig_single(f"{fig_root}_time", metrics["time"].index, metrics["time"], title="Time per Epoch", xlabel="Epoch")
     fig_single(f"{fig_root}_loss", metrics["loss"].index, metrics["loss"], title="Loss per Epoch", xlabel="Epoch")
-    fig_single(f"{fig_root}_loss_per_time", metrics["time"], metrics["loss"], title="Loss over Time", xlabel="Time")
+    fig_single(f"{fig_root}_loss_per_time", metrics["time"], metrics["loss"], title="Loss over Time", xlabel=time_axis_label)
     for key in metric_funcs.keys():
-        fig_single(f"{fig_root}_{key}_per_time", metrics["time"], metrics[key], title=f"{key} over Time", xlabel="Time")
+        fig_single(f"{fig_root}_{key}_per_time", metrics["time"], metrics[key], title=f"{key} over Time", xlabel=time_axis_label)
 
 
 def fig_x_per_y(fig_root: str, metrics: xr.DataArray, x_dim: str, y_dim: str, **kwargs):
