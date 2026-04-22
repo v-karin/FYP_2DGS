@@ -168,7 +168,7 @@ def main_bench():
                     xlabel=time_axis_label
                 )
 
-                for key in metric_funcs.keys():
+                for key in metric_funcs:
                     fig_x_per_y(
                         fig_root_global, metrics_per_lr_arr, "time", key,
                         title=f"{key} over Time\nper Learning Rate",
@@ -284,7 +284,6 @@ block_label = "Block Count per Side"
 square_label = "Image Size per Side"
 topk_label = "Renderer Type (Top-K vs others)"
 gs_label = "Gaussians"
-perfplot_ylabel = "Time in Seconds"
 
 
 
@@ -332,7 +331,7 @@ def main_tiles_perfplot():
             times,
             title=f"{time_label}\nper {block_label}\nover {square_label} (px)\nfor {n_gaussians} Gaussians",
             log=True,
-            ylabel=perfplot_ylabel
+            ylabel=time_axis_label
         )
 
         times_global_dict[n_gaussians] = times
@@ -347,7 +346,7 @@ def main_tiles_perfplot():
         times_global_flat,
         title=f"{time_label}\nper {block_label}\nover {square_label} (px)\nfor All Gaussians",
         log=True,
-        ylabel=perfplot_ylabel
+        ylabel=time_axis_label
     )
 
     squares_root = root_folder(sanit_join(root, "squares"), "fig")
@@ -357,7 +356,7 @@ def main_tiles_perfplot():
             times.squeeze(square_label),
             title=f"{time_label}\nper {block_label}\nover {gs_label} (px)\nfor ${square} \\times {square}$px Images",
             log=True,
-            ylabel=perfplot_ylabel
+            ylabel=time_axis_label
         )
 
 
@@ -409,7 +408,7 @@ def main_topk_perfplot():
             times,
             title=f"Average Time Taken per Epoch\nover Renderer Type (Top-K vs others)\nfor ${square} \\times {square}$px Images",
             log=True,
-            ylabel=perfplot_ylabel
+            ylabel=time_axis_label
         )
 
 
