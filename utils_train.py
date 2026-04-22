@@ -72,6 +72,9 @@ def train_loop(
         ot = time.monotonic_ns()
         y, loss = loop_single(model, coords, loss_fn, gt, optim)
 
+        if y.device == "cuda:0":
+            torch.cuda.synchronize()
+
         metrics["time_ns"].append(time.monotonic_ns() - ot)
         metrics["loss"].append(loss.item())
         for key, func in metric_funcs.items():
