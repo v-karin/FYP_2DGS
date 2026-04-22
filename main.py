@@ -171,10 +171,18 @@ def main_bench():
 
 
 
-def optimal_n_blocks(n_gaussians: int, img: Tensor, gaussians_pixels_per_block_sq: float):
-    img_sizes = torch.tensor(img.shape[:2], dtype=torch.float64)
-    n_blocks = img_sizes.mul(n_gaussians).sqrt().div(gaussians_pixels_per_block_sq)
+def optimal_n_blocks(n_gaussians: int, img_sizes: Tensor, ratio=11.0):
+    n_blocks = img_sizes.sqrt().mul(n_gaussians ** 0.25).div(ratio)
     return n_blocks.to(dtype=torch.int64, device=device).clamp(1)
+
+
+def from_density(gaussians_per_pixel: float, img: Tensor, ratio=11.0):
+    img_sizes = torch.tensor(img.shape[:2], dtype=torch.float64)
+    n_gaussians = int(img_sizes.prod().item() * gaussians_per_pixel)
+    n_blocks = optimal_n_blocks(n_gaussians, img_sizes, ratio=ratio)
+    return n_gaussians, n_blocks
+
+
 
 
 def main_example():
@@ -191,8 +199,8 @@ def main_example():
         img = cvt_img(dataloader.__getitem__(0), device)
         print(f"Image Dimensions: {img.shape}")
 
-        n_gaussians = 16000
-        n_blocks = optimal_n_blocks(n_gaussians, img, 3000)
+        gaussians_per_pixel = 0.3 # ~4000 per 128x128 px
+        n_gaussians, n_blocks = from_density(gaussians_per_pixel, img, 11) # 4000gs * 128 -> 16 blocks per side
         print(f"Blocks: {n_blocks}")
 
         model = WrapperTiledV1(
@@ -243,7 +251,7 @@ def get_wrapper_tiles_perfplot(splatter, renderer, block_size):
 
 def compute_score(n_gaussians, img_size, block_size):
     block_size = 1 if block_size == "Naive" else block_size
-    return n_gaussians * img_size / (block_size * block_size)
+    return (img_size ** 0.5) * (n_gaussians ** 0.25) / block_size
 
 
 
