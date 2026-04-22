@@ -83,6 +83,7 @@ def main_bench():
     dataloader = load_data(key)
     #img = cvt_img(dataloader.__getitem__(randint(0, len(dataloader) - 1)), device)[:96, :96]
     img = cvt_img(dataloader.__getitem__(0), device)[:96, :96]
+    # This stays a square - get_wrapper returns square blocksize
 
     splatters = [SplatterSigRot, SplatterCov]
     lrs = [0.025, 0.05, 0.1, 0.2]
@@ -177,6 +178,53 @@ def main_bench():
 
         if device == "cuda:0":
             save_2d_xr(memory_usage, f"{blocksize_root}_memory_usage.csv")
+
+
+
+
+
+
+gpp_label = "Gaussians Per Pixel"
+
+
+def main_bpp():
+    key = "kodak"
+    dataloader = load_data(key)
+    img = cvt_img(dataloader.__getitem__(0), device)[:256, :256]
+
+    metric_funcs = {
+        "PSNR": PeakSignalNoiseRatio(1.0),
+        "MS-SSIM": PermuteBatchWrapper(MultiScaleStructuralSimilarityIndexMeasure(True, 5)),
+        "LPIPS": PermuteBatchWrapper(LearnedPerceptualImagePatchSimilarity()),
+    }
+    for func in metric_funcs:
+        metric_funcs[func] = metric_funcs[func].to(device=device)
+
+    list_gpp = [0.01, 0.02, 0.05, 0.1, 0.2]
+
+    bpp_metrics = xr.DataArray(coords=[list_gpp], dims=[gpp_label])
+    metrics_per_gpp = {}
+    root = sanit_join(RESULTS_PATH, "bpp")
+
+    for gaussians_per_pixel in list_gpp:
+        n_gaussians, n_blocks = from_density(gaussians_per_pixel, img, 11, device=device)
+
+        model = WrapperTiledV1(
+            SplatterSigRot(n_gaussians, 3, 0.2 / max(img.shape[:2])),
+            RendererNaive(),
+            n_blocks
+        )
+
+        gpp_root = sanit_join(root, f"{gaussians_per_pixel}_gpp")
+        img_root = root_folder(osp.join(gpp_root, "images"), "img")
+        save_img(f"{img_root}_gt", img)
+
+        metrics = train_loop(model, img_root, img, 200, 0.025, save_intervals=25, metric_funcs=metric_funcs)
+        params_filepath = model.splatter.save_params(gpp_root, "params_final")
+
+        fig_and_save_metrics(metrics, root_folder(gpp_root, "fig"), metric_funcs)
+        metrics_per_gpp[gaussians_per_pixel] = xr.DataArray(metrics, dims=["Epoch", "Metric"])
+        bpp_metrics.loc[{gpp_label: gaussians_per_pixel}] = osp.getsize(params_filepath)
 
 
 
@@ -433,6 +481,7 @@ def main_torch_profile():
 def main():
     main_example()
     main_bench()
+    main_bpp()
     main_tiles_perfplot()
     main_topk_perfplot()
     main_torch_profile()

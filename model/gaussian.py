@@ -48,6 +48,7 @@ class SplatterBase(nn.Module):
         os.makedirs(folder, exist_ok=True)
         path = f"{os.path.join(folder, name)}.npz"
         np.savez_compressed(path, **self.export_params())
+        return path
 
 
 
