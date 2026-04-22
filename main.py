@@ -83,6 +83,23 @@ class PermuteBatchWrapper(nn.Module):
         )
 
 
+def get_renderer_topk(k):
+    if k == "Naive":
+        return RendererNaive()
+    
+    if k == "Clamp":
+        return RendererClamp()
+    
+    return RendererTopK(k=k)
+
+
+def get_wrapper_tiles(splatter, renderer, block_size):
+    if block_size == "Naive":
+        return WrapperNaive(splatter, renderer)
+
+    return WrapperTiledV1(splatter, renderer, (block_size, block_size))
+
+
 
 
 
@@ -103,68 +120,71 @@ def main_bench():
     for func in metric_funcs:
         metric_funcs[func] = metric_funcs[func].to(device=device)
 
-    for splatter in splatters:
-        metrics_per_lr = {}
+    for block_size in ["Naive", 6]:
+        for k in ["Naive", 10]:
 
-        for lr in lrs:
-            model = WrapperTiledV1(
-                splatter(400, 3, 0.2 / max(img.shape[:2])),
-                RendererNaive(),
-                (4, 4),
-            ).to(device=device)
-            model_name = f"{model}"
+            for splatter in splatters:
+                metrics_per_lr = {}
+                root = sanit_join(RESULTS_PATH, "bench", f"bs_{block_size}", f"k_{k}", splatter)
 
-            root = sanit_join(RESULTS_PATH, "bench", model, lr, device)
-            img_root = root_folder(osp.join(root, "images"), "img")
+                for lr in lrs:
+                    model = get_wrapper_tiles(
+                        splatter(1000, 3, 0.2 / max(img.shape[:2])),
+                        get_renderer_topk(k),
+                        block_size
+                    ).to(device=device)
 
-            save_img(f"{img_root}_gt", img)
+                    local_root = sanit_join(root, lr, device)
+                    local_img_root = root_folder(osp.join(local_root, "images"), "img")
 
-            metrics = train_loop(
-                model, img_root, img, 50, lr,
-                save_intervals=25,
-                metric_funcs=metric_funcs,
-            )
-            model.splatter.save_params(root, "params_final")
-            del model
+                    save_img(f"{local_img_root}_gt", img)
 
-            fig_and_save_metrics(metrics, root_folder(root, "fig"), metric_funcs)
-            metrics_per_lr[lr] = xr.DataArray(metrics, dims=["epoch", "metric"])
+                    metrics = train_loop(
+                        model, local_img_root, img, 100, lr,
+                        save_intervals=25,
+                        metric_funcs=metric_funcs,
+                    )
+                    model.splatter.save_params(local_root, "params_final")
+                    del model
+
+                    fig_and_save_metrics(metrics, root_folder(local_root, "fig"), metric_funcs)
+                    metrics_per_lr[lr] = xr.DataArray(metrics, dims=["epoch", "metric"])
 
 
-        metrics_per_lr_arr = xr.Dataset(metrics_per_lr).to_dataarray("lr")
-        fig_root_global = root_folder(
-            sanit_join(RESULTS_PATH, "bench", model_name, "lr_all", device),
-            "fig"
-        )
+                metrics_per_lr_arr = xr.Dataset(metrics_per_lr).to_dataarray("lr")
+                fig_root_global = root_folder(
+                    sanit_join(root, "lr_all", device),
+                    "fig"
+                )
 
-        fig_multi(
-            f"{fig_root_global}_time",
-            metrics_per_lr_arr.sel(metric="time"),
-            title="Time per Learning Rate",
-            xlabel="Epoch"
-        )
+                fig_multi(
+                    f"{fig_root_global}_time",
+                    metrics_per_lr_arr.sel(metric="time"),
+                    title="Time per Learning Rate",
+                    xlabel="Epoch"
+                )
 
-        fig_multi(
-            f"{fig_root_global}_loss",
-            metrics_per_lr_arr.sel(metric="loss"),
-            title="Loss per Learning Rate",
-            xlabel="Epoch"
-        )
+                fig_multi(
+                    f"{fig_root_global}_loss",
+                    metrics_per_lr_arr.sel(metric="loss"),
+                    title="Loss per Learning Rate",
+                    xlabel="Epoch"
+                )
 
-        fig_x_per_y(
-            fig_root_global, metrics_per_lr_arr, "time", "loss",
-            title="Loss over Time\nper Learning Rate",
-            xlabel="Time"
-        )
+                fig_x_per_y(
+                    fig_root_global, metrics_per_lr_arr, "time", "loss",
+                    title="Loss over Time\nper Learning Rate",
+                    xlabel="Time"
+                )
 
-        for key in metric_funcs.keys():
-            fig_x_per_y(
-                fig_root_global, metrics_per_lr_arr, "time", key,
-                title=f"{key} over Time\nper Learning Rate",
-                xlabel="Time"
-            )
+                for key in metric_funcs.keys():
+                    fig_x_per_y(
+                        fig_root_global, metrics_per_lr_arr, "time", key,
+                        title=f"{key} over Time\nper Learning Rate",
+                        xlabel="Time"
+                    )
 
-        metrics_per_lr_arr.to_netcdf(f"{fig_root_global}_metrics.h5")
+                metrics_per_lr_arr.to_netcdf(f"{fig_root_global}_metrics.h5")
 
 
 
@@ -242,13 +262,6 @@ def get_mean_time(model, loss_fn, gt, iters: int):
     return time_spent
 
 
-def get_wrapper_tiles_perfplot(splatter, renderer, block_size):
-    if block_size == "Naive":
-        return WrapperNaive(splatter, renderer)
-
-    return WrapperTiledV1(splatter, renderer, (block_size, block_size))
-
-
 def compute_score(n_gaussians, img_size, block_size):
     block_size = 1 if block_size == "Naive" else block_size
     return (img_size ** 0.5) * (n_gaussians ** 0.25) / block_size
@@ -295,7 +308,7 @@ def main_tiles_perfplot():
                     continue
 
                 print(f"Iteration: {n_gaussians:4} Gaussians, {square:3}x{square:3}px, {block_size}x{block_size} blocks")
-                model = get_wrapper_tiles_perfplot(
+                model = get_wrapper_tiles(
                     SplatterCov(n_gaussians, 3, 0.2 / max(gt.shape[:2])),
                     RendererNaive(),
                     block_size
@@ -344,18 +357,6 @@ def main_tiles_perfplot():
 
 
 
-def get_renderer_topk_perfplot(k):
-    if k == "Naive":
-        return RendererNaive()
-    
-    if k == "Clamp":
-        return RendererClamp()
-    
-    return RendererTopK(k=k)
-
-
-
-
 def main_topk_perfplot():
     key = list(dataset_profiles)[1]
     dataloader = load_data(key)
@@ -385,9 +386,9 @@ def main_topk_perfplot():
 
                 print(f"Iteration: {square:3}x{square:3}px, {block_size}x{block_size} blocks, {k}-K renderer")
 
-                model = get_wrapper_tiles_perfplot(
+                model = get_wrapper_tiles(
                     SplatterCov(n_gaussians, 3, 0.2 / max(gt.shape[:2])),
-                    get_renderer_topk_perfplot(k),
+                    get_renderer_topk(k),
                     block_size
                 ).to(device=device)
 
