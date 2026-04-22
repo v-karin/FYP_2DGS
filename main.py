@@ -9,12 +9,14 @@ from torchmetrics.image import PeakSignalNoiseRatio, MultiScaleStructuralSimilar
 import torchviz
 import xarray as xr
 
-from utils_fig import fig_single, fig_multi
-from utils_train import train_loop, time_single
+from utils_fig import fig_multi, fig_and_save_metrics, fig_x_per_y
+from utils_metrics import array_from_dict, flatten_xarray, PermuteBatchWrapper
+from utils_train import train_loop, get_mean_time
 
 from data_prep.downloader import load_data, dataset_profiles
 from image.utils import coords_from_img, save_img, cvt_img
 from model.gaussian import *
+from model.init_params import from_density, compute_score
 
 
 ROOT_OUT_PATH = os.getcwd()
@@ -23,6 +25,8 @@ RESULTS_PATH = osp.join(ROOT_OUT_PATH, "results")
 
 device = "cpu"
 #device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+
 
 
 
@@ -43,44 +47,6 @@ def sanit_join(root: str, *values: str):
     ])
 
 
-def fig_and_save_metrics(metrics, fig_root, metric_funcs):
-    metrics.to_csv(f"{fig_root}_metrics.csv", sep=";")
-
-    fig_single(f"{fig_root}_time", metrics["time"].index, metrics["time"], title="Time per Epoch", xlabel="Epoch")
-    fig_single(f"{fig_root}_loss", metrics["loss"].index, metrics["loss"], title="Loss per Epoch", xlabel="Epoch")
-    fig_single(f"{fig_root}_loss_per_time", metrics["time"], metrics["loss"], title="Loss over Time", xlabel="Time")
-    for key in metric_funcs.keys():
-        fig_single(f"{fig_root}_{key}_per_time", metrics["time"], metrics[key], title=f"{key} over Time", xlabel="Time")
-
-
-def prepare_metric_xy(metrics: xr.DataArray, x_dim: str, y_dim: str):
-    return (
-        metrics.sel(metric=y_dim)
-        .assign_coords(epoch=metrics.sel(metric=x_dim))
-        .rename(epoch=x_dim)
-    )
-
-
-def fig_x_per_y(fig_root: str, metrics: xr.DataArray, x_dim: str, y_dim: str, **kwargs):
-    fig_multi(
-        f"{fig_root}_{y_dim}_per_{x_dim}",
-        prepare_metric_xy(metrics, x_dim, y_dim),
-        **kwargs
-    )
-
-
-
-
-class PermuteBatchWrapper(nn.Module):
-    def __init__(self, metric):
-        super().__init__()
-        self.metric = metric
-    
-    def forward(self, pred: Tensor, gt: Tensor):
-        return self.metric(
-            pred.permute(2, 0, 1).unsqueeze(0).clamp(0, 1),
-            gt.permute(2, 0, 1).unsqueeze(0)
-        )
 
 
 def get_renderer_topk(k):
@@ -191,20 +157,6 @@ def main_bench():
 
 
 
-def optimal_n_blocks(n_gaussians: int, img_sizes: Tensor, ratio=11.0):
-    n_blocks = img_sizes.sqrt().mul(n_gaussians ** 0.25).div(ratio)
-    return n_blocks.to(dtype=torch.int64, device=device).clamp(1)
-
-
-def from_density(gaussians_per_pixel: float, img: Tensor, ratio=11.0):
-    img_sizes = torch.tensor(img.shape[:2], dtype=torch.float64)
-    n_gaussians = int(img_sizes.prod().item() * gaussians_per_pixel)
-    n_blocks = optimal_n_blocks(n_gaussians, img_sizes, ratio=ratio)
-    return n_gaussians, n_blocks
-
-
-
-
 def main_example():
     for key in dataset_profiles:
         metric_funcs = {
@@ -220,7 +172,7 @@ def main_example():
         print(f"Image Dimensions: {img.shape}")
 
         gaussians_per_pixel = 0.3 # ~4000 per 128x128 px
-        n_gaussians, n_blocks = from_density(gaussians_per_pixel, img, 11) # 4000gs * 128 -> 16 blocks per side
+        n_gaussians, n_blocks = from_density(gaussians_per_pixel, img, 11, device=device) # 4000gs * 128 -> 16 blocks per side
         print(f"Blocks: {n_blocks}")
 
         model = WrapperTiledV1(
@@ -238,33 +190,6 @@ def main_example():
         model.splatter.save_params(root, "params_final")
 
         fig_and_save_metrics(metrics, root_folder(root, "fig"), metric_funcs)
-
-
-
-
-
-
-def array_from_dict(d: dict, dim_new):
-    return xr.Dataset(d).to_array(dim=dim_new)
-
-
-def flatten_xarray(arr: xr.DataArray, dim0, dim1, dim_new, idx_suffix=("", "")):
-    arr_flat = arr.stack(**{dim_new: (dim0, dim1)})
-    idx_flat = [f"{idx[0]}{idx_suffix[0]}_{idx[1]}{idx_suffix[1]}" for idx in arr_flat.indexes[dim_new]]
-    return arr_flat.drop_vars([dim_new, dim0, dim1]).assign_coords(**{dim_new: idx_flat})
-
-
-def get_mean_time(model, loss_fn, gt, iters: int):
-    time_spent_list = [time_single(model, loss_fn, gt) for i in range(iters)]
-    time_spent = sum(time_spent_list) / len(time_spent_list)
-    print("Time:", time_spent)
-
-    return time_spent
-
-
-def compute_score(n_gaussians, img_size, block_size):
-    block_size = 1 if block_size == "Naive" else block_size
-    return (img_size ** 0.5) * (n_gaussians ** 0.25) / block_size
 
 
 

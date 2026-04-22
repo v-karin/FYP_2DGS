@@ -28,8 +28,6 @@ def loop_single(model, coords, loss_fn, gt, optim):
     return y, loss
 
 
-
-
 def time_single(model, loss_fn, gt):
     coords = coords_from_img(gt[..., 0])
     optim = torch.optim.Adam(model.parameters(), 0.1)
@@ -37,6 +35,16 @@ def time_single(model, loss_fn, gt):
     ot = time.monotonic_ns()
     loop_single(model, coords, loss_fn, gt, optim)
     return (time.monotonic_ns() - ot) / 1e9
+
+
+def get_mean_time(model, loss_fn, gt, iters: int):
+    time_spent_list = [time_single(model, loss_fn, gt) for i in range(iters)]
+    time_spent = sum(time_spent_list) / len(time_spent_list)
+    print("Time:", time_spent)
+
+    return time_spent
+
+
 
 
 
