@@ -9,7 +9,7 @@ from torchmetrics.image import PeakSignalNoiseRatio, MultiScaleStructuralSimilar
 import torchviz
 import xarray as xr
 
-from utils_fig import fig_multi, fig_and_save_metrics, fig_x_per_y
+from utils_fig import fig_multi, fig_and_save_metrics, fig_x_per_y, fig_single
 from utils_metrics import array_from_dict, flatten_xarray, save_2d_xr, PermuteBatchWrapper
 from utils_train import train_loop, get_mean_time
 
