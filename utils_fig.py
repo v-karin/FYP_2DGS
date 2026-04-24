@@ -35,13 +35,13 @@ def finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel):
     plt.close(fig)
 
 
-def fig_single(path, x, y, title=None, dpi=300, log=False, xlabel=None, ylabel=None, figsize=(5.906, 4.176)):
+def fig_single(path, x, y, title=None, dpi=300, log=False, xlabel=None, ylabel=None, figsize=(5.906, 3.9)):
     fig, ax = init_fig(figsize, log)
     ax.plot(x, y)
     finish_and_save(path, fig, ax, title, dpi, xlabel, ylabel)
 
 
-def fig_multi(path, xy, title=None, dpi=300, log=False, xlabel=None, ylabel=None, figsize=(5.906, 4.176)):
+def fig_multi(path, xy, title=None, dpi=300, log=False, xlabel=None, ylabel=None, figsize=(5.906, 3.9)):
     fig, ax = init_fig(figsize, log)
 
     if isinstance(xy, tuple):
