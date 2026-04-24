@@ -23,8 +23,8 @@ ROOT_OUT_PATH = os.getcwd()
 RESULTS_PATH = osp.join(ROOT_OUT_PATH, "results")
 
 
-device = "cpu"
-#device = "cuda:0" if torch.cuda.is_available() else "cpu"
+#device = "cpu"
+device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
 def measure_and_clear():
